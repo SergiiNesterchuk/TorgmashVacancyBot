@@ -471,9 +471,6 @@ async def _broadcast(bot: Bot, m: Message, user_ids: list[int], label: str):
     blocked = 0
 
     for uid in user_ids:
-        if uid == ADMIN_ID:
-            # Don't send to admin himself
-            continue
         try:
             await m.copy_to(uid)
             sent += 1
