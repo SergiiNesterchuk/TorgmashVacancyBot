@@ -18,6 +18,8 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from .config import get_settings
 from .states import Form
 from .keyboards import main_menu_kb, yes_no_kb, confirm_kb, share_phone_kb, remove_kb
+from .services.users_db import save_user
+from .admin import router as admin_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,6 +30,7 @@ log = logging.getLogger(__name__)
 settings = get_settings()
 bot = Bot(settings.bot_token)
 dp = Dispatcher()
+dp.include_router(admin_router)
 
 WEBHOOK_PATH = "/webhook"
 
@@ -61,6 +64,13 @@ async def _clear_kb(c: CallbackQuery) -> None:
 @dp.message(CommandStart())
 async def start(m: Message, state: FSMContext):
     await state.clear()
+    # Save user to DB
+    save_user(
+        user_id=m.from_user.id,
+        username=m.from_user.username or "",
+        first_name=m.from_user.first_name or "",
+        last_name=m.from_user.last_name or "",
+    )
     await m.answer(
         VACANCY_TEXT,
         parse_mode="HTML",
