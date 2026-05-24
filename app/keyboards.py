@@ -1,6 +1,7 @@
 from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    ReplyKeyboardRemove,
 )
 
 def main_menu_kb() -> ReplyKeyboardMarkup:
@@ -20,3 +21,13 @@ def confirm_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✅ Підтвердити", callback_data="confirm:yes"),
         InlineKeyboardButton(text="🔄 Заповнити знову", callback_data="confirm:restart"),
     ]])
+
+def share_phone_kb() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="📱 Поділитися номером", request_contact=True)]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+def remove_kb() -> ReplyKeyboardRemove:
+    return ReplyKeyboardRemove()

@@ -17,7 +17,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 from .config import get_settings
 from .states import Form
-from .keyboards import main_menu_kb, yes_no_kb, confirm_kb
+from .keyboards import main_menu_kb, yes_no_kb, confirm_kb, share_phone_kb, remove_kb
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,7 +30,6 @@ bot = Bot(settings.bot_token)
 dp = Dispatcher()
 
 WEBHOOK_PATH = "/webhook"
-TOTAL_STEPS = 5
 
 VACANCY_TEXT = (
     "<b>Вакансія: Продавець-консультант</b> 💧\n\n"
@@ -41,8 +40,12 @@ VACANCY_TEXT = (
 )
 
 
-def _step(n: int) -> str:
-    return f"<b>Крок {n}/{TOTAL_STEPS}</b>\n"
+def _total_steps(is_brovary: bool) -> int:
+    return 4 if is_brovary else 6
+
+
+def _step(n: int, total: int) -> str:
+    return f"<b>Крок {n}/{total}</b>\n"
 
 
 async def _clear_kb(c: CallbackQuery) -> None:
@@ -69,32 +72,23 @@ async def start(m: Message, state: FSMContext):
 async def start_form(m: Message, state: FSMContext):
     await state.update_data(tg_username=m.from_user.username or "", tg_id=m.from_user.id)
     await m.answer(
-        f"{_step(1)}Введи своє <b>ім'я</b>:",
+        f"{_step(1, 4)}Введи своє <b>ім'я та прізвище</b>:",
         parse_mode="HTML",
+        reply_markup=remove_kb(),
     )
-    await state.set_state(Form.first_name)
+    await state.set_state(Form.full_name)
 
 
 # ==========================
 #    Анкета
 # ==========================
-@dp.message(Form.first_name)
-async def get_first_name(m: Message, state: FSMContext):
+@dp.message(Form.full_name)
+async def get_full_name(m: Message, state: FSMContext):
     val = (m.text or "").strip()
-    if len(val) < 2:
-        return await m.answer("Будь ласка, введи ім'я (мінімум 2 символи).")
-    await state.update_data(first_name=val)
-    await m.answer(f"{_step(2)}Введи своє <b>прізвище</b>:", parse_mode="HTML")
-    await state.set_state(Form.last_name)
-
-
-@dp.message(Form.last_name)
-async def get_last_name(m: Message, state: FSMContext):
-    val = (m.text or "").strip()
-    if len(val) < 2:
-        return await m.answer("Будь ласка, введи прізвище (мінімум 2 символи).")
-    await state.update_data(last_name=val)
-    await m.answer(f"{_step(3)}Скільки тобі <b>років</b>?", parse_mode="HTML")
+    if len(val) < 3:
+        return await m.answer("Будь ласка, введи ім'я та прізвище (мінімум 3 символи).")
+    await state.update_data(full_name=val)
+    await m.answer(f"{_step(2, 4)}Скільки тобі <b>років</b>?", parse_mode="HTML")
     await state.set_state(Form.age)
 
 
@@ -109,7 +103,7 @@ async def get_age(m: Message, state: FSMContext):
         return await m.answer("Введи коректний вік (число від 14 до 70).")
     await state.update_data(age=age)
     await m.answer(
-        f"{_step(4)}Ти проживаєш у <b>Броварах</b>?",
+        f"{_step(3, 4)}Ти проживаєш у <b>Броварах</b>?",
         reply_markup=yes_no_kb("brovary"),
         parse_mode="HTML",
     )
@@ -121,25 +115,86 @@ async def get_brovary(c: CallbackQuery, state: FSMContext):
     await c.answer()
     await _clear_kb(c)
     ans = c.data.split(":", 1)[1]
-    await state.update_data(brovary="Так" if ans == "yes" else "Ні")
-    await c.message.answer(
-        f"{_step(5)}Залиш свої <b>контактні дані</b>:\n\n"
-        "• Номер телефону\n"
-        "• або @username в Telegram\n"
-        "• або посилання на соцмережу\n\n"
-        "<i>Напиши будь-яким зручним способом</i>",
+    is_brovary = ans == "yes"
+    await state.update_data(brovary="Так" if is_brovary else "Ні")
+
+    if is_brovary:
+        # Бровари — одразу контакт (крок 4/4)
+        await state.update_data(travel_time="—", can_arrive="—")
+        await c.message.answer(
+            f"{_step(4, 4)}Залиш свої <b>контактні дані</b>:\n\n"
+            "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
+            parse_mode="HTML",
+            reply_markup=share_phone_kb(),
+        )
+        await state.set_state(Form.contact)
+    else:
+        # Не Бровари — додаткові питання
+        await c.message.answer(
+            f"{_step(4, 6)}Скільки <b>хвилин</b> тобі добиратися до роботи?\n\n"
+            "<i>(вул. Онікієнка, 132, Бровари)</i>",
+            parse_mode="HTML",
+        )
+        await state.set_state(Form.travel_time)
+
+
+@dp.message(Form.travel_time)
+async def get_travel_time(m: Message, state: FSMContext):
+    txt = (m.text or "").strip()
+    try:
+        minutes = int(txt)
+        if not (1 <= minutes <= 300):
+            raise ValueError
+        travel_str = f"{minutes} хв"
+    except ValueError:
+        # Allow free-text too
+        if len(txt) < 1:
+            return await m.answer("Введи кількість хвилин (наприклад: 30).")
+        travel_str = txt
+
+    await state.update_data(travel_time=travel_str)
+    await m.answer(
+        f"{_step(5, 6)}Чи зможеш <b>завжди вчасно</b> добиратися до роботи?",
+        reply_markup=yes_no_kb("arrive"),
         parse_mode="HTML",
+    )
+    await state.set_state(Form.can_arrive)
+
+
+@dp.callback_query(Form.can_arrive, F.data.startswith("arrive:"))
+async def get_can_arrive(c: CallbackQuery, state: FSMContext):
+    await c.answer()
+    await _clear_kb(c)
+    ans = c.data.split(":", 1)[1]
+    await state.update_data(can_arrive="Так" if ans == "yes" else "Ні")
+    await c.message.answer(
+        f"{_step(6, 6)}Залиш свої <b>контактні дані</b>:\n\n"
+        "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
+        parse_mode="HTML",
+        reply_markup=share_phone_kb(),
     )
     await state.set_state(Form.contact)
 
 
+@dp.message(Form.contact, F.contact)
+async def get_contact_shared(m: Message, state: FSMContext):
+    """Handle shared contact button."""
+    phone = m.contact.phone_number
+    await state.update_data(contact=phone)
+    await _show_summary(m, state)
+
+
 @dp.message(Form.contact)
-async def get_contact(m: Message, state: FSMContext):
+async def get_contact_text(m: Message, state: FSMContext):
+    """Handle text contact info."""
     val = (m.text or "").strip()
     if len(val) < 3:
         return await m.answer("Будь ласка, вкажи контактні дані.")
     await state.update_data(contact=val)
+    await _show_summary(m, state)
 
+
+async def _show_summary(m: Message, state: FSMContext):
     data = await state.get_data()
     summary = _build_summary(data)
     await m.answer(
@@ -152,12 +207,17 @@ async def get_contact(m: Message, state: FSMContext):
 
 def _build_summary(data: dict) -> str:
     lines = [
-        f"• Ім'я: <b>{h(str(data.get('first_name', '')))}</b>",
-        f"• Прізвище: <b>{h(str(data.get('last_name', '')))}</b>",
+        f"• Ім'я та прізвище: <b>{h(str(data.get('full_name', '')))}</b>",
         f"• Вік: <b>{h(str(data.get('age', '')))}</b>",
         f"• Бровари: <b>{h(str(data.get('brovary', '—')))}</b>",
-        f"• Контакт: <b>{h(str(data.get('contact', '')))}</b>",
     ]
+    # Додаткові поля для не-Бровари
+    if data.get("brovary") == "Ні":
+        lines.append(f"• Час дороги: <b>{h(str(data.get('travel_time', '—')))}</b>")
+        lines.append(f"• Вчасно добиратися: <b>{h(str(data.get('can_arrive', '—')))}</b>")
+
+    lines.append(f"• Контакт: <b>{h(str(data.get('contact', '')))}</b>")
+
     tg = data.get("tg_username", "")
     if tg:
         lines.append(f"• Telegram: @{h(tg)}")
