@@ -38,8 +38,8 @@ VACANCY_TEXT = (
     "<b>Вакансія: Продавець-консультант</b> 💧\n\n"
     "📍 <b>Торгмаш</b>, вул. Онікієнка, 132 (Бровари)\n\n"
     "Продаж питної води та аксесуарів. Робота з клієнтами в магазині.\n\n"
-    "❗️ <b>Дзвінки не потрібні</b> — заповни коротку анкету нижче, "
-    "і ми зв'яжемося з тобою самі 🙂"
+    "❗️ <b>Дзвінки не потрібні</b> — заповніть коротку анкету нижче, "
+    "і ми зв'яжемося з вами самі 🙂"
 )
 
 
@@ -82,7 +82,7 @@ async def start(m: Message, state: FSMContext):
 async def start_form(m: Message, state: FSMContext):
     await state.update_data(tg_username=m.from_user.username or "", tg_id=m.from_user.id)
     await m.answer(
-        f"{_step(1, 5)}Введи своє <b>ім'я та прізвище</b>:",
+        f"{_step(1, 5)}Введіть своє <b>ім'я та прізвище</b>:",
         parse_mode="HTML",
         reply_markup=remove_kb(),
     )
@@ -96,9 +96,9 @@ async def start_form(m: Message, state: FSMContext):
 async def get_full_name(m: Message, state: FSMContext):
     val = (m.text or "").strip()
     if len(val) < 3:
-        return await m.answer("Будь ласка, введи ім'я та прізвище (мінімум 3 символи).")
+        return await m.answer("Будь ласка, введіть ім'я та прізвище (мінімум 3 символи).")
     await state.update_data(full_name=val)
-    await m.answer(f"{_step(2, 5)}Скільки тобі <b>років</b>?", parse_mode="HTML")
+    await m.answer(f"{_step(2, 5)}Скільки вам <b>років</b>?", parse_mode="HTML")
     await state.set_state(Form.age)
 
 
@@ -110,10 +110,10 @@ async def get_age(m: Message, state: FSMContext):
         if not (14 <= age <= 70):
             raise ValueError
     except ValueError:
-        return await m.answer("Введи коректний вік (число від 14 до 70).")
+        return await m.answer("Введіть коректний вік (число від 14 до 70).")
     await state.update_data(age=age)
     await m.answer(
-        f"{_step(3, 5)}Чи маєш <b>досвід роботи</b> в торгівлі або подібній сфері?\n\n"
+        f"{_step(3, 5)}Чи маєте <b>досвід роботи</b> в торгівлі або подібній сфері?\n\n"
         "<i>(досвід не обов'язковий, але вітається)</i>",
         reply_markup=experience_kb(),
         parse_mode="HTML",
@@ -130,7 +130,7 @@ async def get_experience(c: CallbackQuery, state: FSMContext):
     if ans == "yes":
         await state.update_data(experience="Так")
         await c.message.answer(
-            "📝 Розкажи коротко, <b>де саме</b> працював(-ла) і в якій сфері?\n\n"
+            "📝 Розкажіть коротко, <b>де саме</b> працювали і в якій сфері?\n\n"
             "<i>(наприклад: «Продавець в АТБ 2 роки» або «Касир Сільпо»)</i>",
             parse_mode="HTML",
         )
@@ -138,7 +138,7 @@ async def get_experience(c: CallbackQuery, state: FSMContext):
     else:
         await state.update_data(experience="Ні", experience_details="—")
         await c.message.answer(
-            f"{_step(4, 5)}Ти проживаєш у <b>Броварах</b>?",
+            f"{_step(4, 5)}Ви проживаєте у <b>Броварах</b>?",
             reply_markup=yes_no_kb("brovary"),
             parse_mode="HTML",
         )
@@ -149,10 +149,10 @@ async def get_experience(c: CallbackQuery, state: FSMContext):
 async def get_experience_details(m: Message, state: FSMContext):
     val = (m.text or "").strip()
     if len(val) < 2:
-        return await m.answer("Напиши хоча б коротко, де працював(-ла).")
+        return await m.answer("Напишіть хоча б коротко, де працювали.")
     await state.update_data(experience_details=val)
     await m.answer(
-        f"{_step(4, 5)}Ти проживаєш у <b>Броварах</b>?",
+        f"{_step(4, 5)}Ви проживаєте у <b>Броварах</b>?",
         reply_markup=yes_no_kb("brovary"),
         parse_mode="HTML",
     )
@@ -171,8 +171,8 @@ async def get_brovary(c: CallbackQuery, state: FSMContext):
         # Бровари — одразу контакт (крок 5/5)
         await state.update_data(travel_time="—", can_arrive="—")
         await c.message.answer(
-            f"{_step(5, 5)}Залиш свої <b>контактні дані</b>:\n\n"
-            "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
+            f"{_step(5, 5)}Залиште свої <b>контактні дані</b>:\n\n"
+            "Натисніть кнопку нижче або напишіть номер телефону / @username / посилання на соцмережу",
             parse_mode="HTML",
             reply_markup=share_phone_kb(),
         )
@@ -180,7 +180,7 @@ async def get_brovary(c: CallbackQuery, state: FSMContext):
     else:
         # Не Бровари — додаткові питання
         await c.message.answer(
-            f"{_step(5, 7)}Скільки <b>хвилин</b> тобі добиратися до роботи?\n\n"
+            f"{_step(5, 7)}Скільки <b>хвилин</b> вам добиратися до роботи?\n\n"
             "<i>(вул. Онікієнка, 132, Бровари)</i>",
             parse_mode="HTML",
         )
@@ -198,12 +198,12 @@ async def get_travel_time(m: Message, state: FSMContext):
     except ValueError:
         # Allow free-text too
         if len(txt) < 1:
-            return await m.answer("Введи кількість хвилин (наприклад: 30).")
+            return await m.answer("Введіть кількість хвилин (наприклад: 30).")
         travel_str = txt
 
     await state.update_data(travel_time=travel_str)
     await m.answer(
-        f"{_step(6, 7)}Чи зможеш <b>завжди вчасно</b> добиратися до роботи?",
+        f"{_step(6, 7)}Чи зможете <b>завжди вчасно</b> добиратися до роботи?",
         reply_markup=yes_no_kb("arrive"),
         parse_mode="HTML",
     )
@@ -217,8 +217,8 @@ async def get_can_arrive(c: CallbackQuery, state: FSMContext):
     ans = c.data.split(":", 1)[1]
     await state.update_data(can_arrive="Так" if ans == "yes" else "Ні")
     await c.message.answer(
-        f"{_step(7, 7)}Залиш свої <b>контактні дані</b>:\n\n"
-        "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
+        f"{_step(7, 7)}Залиште свої <b>контактні дані</b>:\n\n"
+        "Натисніть кнопку нижче або напишіть номер телефону / @username / посилання на соцмережу",
         parse_mode="HTML",
         reply_markup=share_phone_kb(),
     )
@@ -238,7 +238,7 @@ async def get_contact_text(m: Message, state: FSMContext):
     """Handle text contact info."""
     val = (m.text or "").strip()
     if len(val) < 3:
-        return await m.answer("Будь ласка, вкажи контактні дані.")
+        return await m.answer("Будь ласка, вкажіть контактні дані.")
     await state.update_data(contact=val)
     await _show_summary(m, state)
 
@@ -247,7 +247,7 @@ async def _show_summary(m: Message, state: FSMContext):
     data = await state.get_data()
     summary = _build_summary(data)
     await m.answer(
-        f"<b>Перевір свої дані:</b>\n\n{summary}",
+        f"<b>Перевірте свої дані:</b>\n\n{summary}",
         reply_markup=confirm_kb(),
         parse_mode="HTML",
     )
@@ -263,7 +263,7 @@ def _build_summary(data: dict) -> str:
     # Деталі досвіду
     exp_details = data.get("experience_details", "—")
     if exp_details and exp_details != "—":
-        lines.append(f"• Де працював(-ла): <b>{h(str(exp_details))}</b>")
+        lines.append(f"• Де працювали: <b>{h(str(exp_details))}</b>")
 
     lines.append(f"• Бровари: <b>{h(str(data.get('brovary', '—')))}</b>")
     # Додаткові поля для не-Бровари
@@ -319,14 +319,14 @@ async def finalize(c: CallbackQuery, state: FSMContext):
     if sent_ok:
         await c.message.answer(
             "✅ <b>Заявку надіслано!</b>\n\n"
-            "Ми розглянемо її та зв'яжемося з тобою найближчим часом.\n\n"
+            "Ми розглянемо її та зв'яжемося з вами найближчим часом.\n\n"
             "Дякуємо за інтерес до роботи в нашій команді 💧",
             parse_mode="HTML",
             reply_markup=main_menu_kb(),
         )
     else:
         await c.message.answer(
-            "⚠️ Виникла технічна помилка. Спробуй ще раз пізніше або зв'яжись напряму.",
+            "⚠️ Виникла технічна помилка. Спробуйте ще раз пізніше або зв'яжіться напряму.",
             parse_mode="HTML",
             reply_markup=main_menu_kb(),
         )
