@@ -29,5 +29,11 @@ def share_phone_kb() -> ReplyKeyboardMarkup:
         one_time_keyboard=True,
     )
 
+def experience_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Так, є досвід", callback_data="exp:yes")],
+        [InlineKeyboardButton(text="❌ Ні, досвіду немає", callback_data="exp:no")],
+    ])
+
 def remove_kb() -> ReplyKeyboardRemove:
     return ReplyKeyboardRemove()

@@ -17,7 +17,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 from .config import get_settings
 from .states import Form
-from .keyboards import main_menu_kb, yes_no_kb, confirm_kb, share_phone_kb, remove_kb
+from .keyboards import main_menu_kb, yes_no_kb, confirm_kb, share_phone_kb, remove_kb, experience_kb
 from .services.users_db import save_user
 from .admin import router as admin_router
 
@@ -44,7 +44,7 @@ VACANCY_TEXT = (
 
 
 def _total_steps(is_brovary: bool) -> int:
-    return 4 if is_brovary else 6
+    return 5 if is_brovary else 7
 
 
 def _step(n: int, total: int) -> str:
@@ -82,7 +82,7 @@ async def start(m: Message, state: FSMContext):
 async def start_form(m: Message, state: FSMContext):
     await state.update_data(tg_username=m.from_user.username or "", tg_id=m.from_user.id)
     await m.answer(
-        f"{_step(1, 4)}Введи своє <b>ім'я та прізвище</b>:",
+        f"{_step(1, 5)}Введи своє <b>ім'я та прізвище</b>:",
         parse_mode="HTML",
         reply_markup=remove_kb(),
     )
@@ -98,7 +98,7 @@ async def get_full_name(m: Message, state: FSMContext):
     if len(val) < 3:
         return await m.answer("Будь ласка, введи ім'я та прізвище (мінімум 3 символи).")
     await state.update_data(full_name=val)
-    await m.answer(f"{_step(2, 4)}Скільки тобі <b>років</b>?", parse_mode="HTML")
+    await m.answer(f"{_step(2, 5)}Скільки тобі <b>років</b>?", parse_mode="HTML")
     await state.set_state(Form.age)
 
 
@@ -113,7 +113,46 @@ async def get_age(m: Message, state: FSMContext):
         return await m.answer("Введи коректний вік (число від 14 до 70).")
     await state.update_data(age=age)
     await m.answer(
-        f"{_step(3, 4)}Ти проживаєш у <b>Броварах</b>?",
+        f"{_step(3, 5)}Чи маєш <b>досвід роботи</b> в торгівлі або подібній сфері?\n\n"
+        "<i>(досвід не обов'язковий, але вітається)</i>",
+        reply_markup=experience_kb(),
+        parse_mode="HTML",
+    )
+    await state.set_state(Form.experience)
+
+
+@dp.callback_query(Form.experience, F.data.startswith("exp:"))
+async def get_experience(c: CallbackQuery, state: FSMContext):
+    await c.answer()
+    await _clear_kb(c)
+    ans = c.data.split(":", 1)[1]
+
+    if ans == "yes":
+        await state.update_data(experience="Так")
+        await c.message.answer(
+            "📝 Розкажи коротко, <b>де саме</b> працював(-ла) і в якій сфері?\n\n"
+            "<i>(наприклад: «Продавець в АТБ 2 роки» або «Касир Сільпо»)</i>",
+            parse_mode="HTML",
+        )
+        await state.set_state(Form.experience_details)
+    else:
+        await state.update_data(experience="Ні", experience_details="—")
+        await c.message.answer(
+            f"{_step(4, 5)}Ти проживаєш у <b>Броварах</b>?",
+            reply_markup=yes_no_kb("brovary"),
+            parse_mode="HTML",
+        )
+        await state.set_state(Form.brovary)
+
+
+@dp.message(Form.experience_details)
+async def get_experience_details(m: Message, state: FSMContext):
+    val = (m.text or "").strip()
+    if len(val) < 2:
+        return await m.answer("Напиши хоча б коротко, де працював(-ла).")
+    await state.update_data(experience_details=val)
+    await m.answer(
+        f"{_step(4, 5)}Ти проживаєш у <b>Броварах</b>?",
         reply_markup=yes_no_kb("brovary"),
         parse_mode="HTML",
     )
@@ -129,10 +168,10 @@ async def get_brovary(c: CallbackQuery, state: FSMContext):
     await state.update_data(brovary="Так" if is_brovary else "Ні")
 
     if is_brovary:
-        # Бровари — одразу контакт (крок 4/4)
+        # Бровари — одразу контакт (крок 5/5)
         await state.update_data(travel_time="—", can_arrive="—")
         await c.message.answer(
-            f"{_step(4, 4)}Залиш свої <b>контактні дані</b>:\n\n"
+            f"{_step(5, 5)}Залиш свої <b>контактні дані</b>:\n\n"
             "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
             parse_mode="HTML",
             reply_markup=share_phone_kb(),
@@ -141,7 +180,7 @@ async def get_brovary(c: CallbackQuery, state: FSMContext):
     else:
         # Не Бровари — додаткові питання
         await c.message.answer(
-            f"{_step(4, 6)}Скільки <b>хвилин</b> тобі добиратися до роботи?\n\n"
+            f"{_step(5, 7)}Скільки <b>хвилин</b> тобі добиратися до роботи?\n\n"
             "<i>(вул. Онікієнка, 132, Бровари)</i>",
             parse_mode="HTML",
         )
@@ -164,7 +203,7 @@ async def get_travel_time(m: Message, state: FSMContext):
 
     await state.update_data(travel_time=travel_str)
     await m.answer(
-        f"{_step(5, 6)}Чи зможеш <b>завжди вчасно</b> добиратися до роботи?",
+        f"{_step(6, 7)}Чи зможеш <b>завжди вчасно</b> добиратися до роботи?",
         reply_markup=yes_no_kb("arrive"),
         parse_mode="HTML",
     )
@@ -178,7 +217,7 @@ async def get_can_arrive(c: CallbackQuery, state: FSMContext):
     ans = c.data.split(":", 1)[1]
     await state.update_data(can_arrive="Так" if ans == "yes" else "Ні")
     await c.message.answer(
-        f"{_step(6, 6)}Залиш свої <b>контактні дані</b>:\n\n"
+        f"{_step(7, 7)}Залиш свої <b>контактні дані</b>:\n\n"
         "Натисни кнопку нижче або напиши номер телефону / @username / посилання на соцмережу",
         parse_mode="HTML",
         reply_markup=share_phone_kb(),
@@ -219,8 +258,14 @@ def _build_summary(data: dict) -> str:
     lines = [
         f"• Ім'я та прізвище: <b>{h(str(data.get('full_name', '')))}</b>",
         f"• Вік: <b>{h(str(data.get('age', '')))}</b>",
-        f"• Бровари: <b>{h(str(data.get('brovary', '—')))}</b>",
+        f"• Досвід у торгівлі: <b>{h(str(data.get('experience', '—')))}</b>",
     ]
+    # Деталі досвіду
+    exp_details = data.get("experience_details", "—")
+    if exp_details and exp_details != "—":
+        lines.append(f"• Де працював(-ла): <b>{h(str(exp_details))}</b>")
+
+    lines.append(f"• Бровари: <b>{h(str(data.get('brovary', '—')))}</b>")
     # Додаткові поля для не-Бровари
     if data.get("brovary") == "Ні":
         lines.append(f"• Час дороги: <b>{h(str(data.get('travel_time', '—')))}</b>")
